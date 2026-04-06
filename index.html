@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
+<>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thanga Mani</title>
@@ -23,6 +23,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
         integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <!-- EmailJS -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>
+        emailjs.init('YOUR_EMAILJS_PUBLIC_KEY');
+    </script>
+
+    <!-- Razorpay -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 
 <body>
@@ -257,8 +265,8 @@
 
                     <div class="modal-footer">
                         <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                        <button class="btn btn-glass-ef order-confirm-btn" onclick="confirmOrder()">Confirm &
-                            WhatsApp</button>
+                        <button class="btn btn-glass-ef order-confirm-btn" onclick="confirmOrder()">Payment
+                        </button>
                     </div>
 
                 </div>
@@ -1258,7 +1266,7 @@
     <!-- FLOATING ORDER BAR -->
     <div class="order-bar d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Total: ₹ <span id="totalAmount" class="text-success">0</span></h5>
-        <button class="btn btn-glass-ef py-3" onclick="openOrderPopup()">Order on WhatsApp</button>
+        <button class="btn btn-glass-ef py-3" onclick="openOrderPopup()">Click to Proceed</button>
     </div>
 
 

@@ -16,11 +16,8 @@ function calculateTotal() {
     document.getElementById("totalAmount").innerText = total;
 }
 
-
-
 // ================= CHECK PRODUCT BEFORE POPUP =================
 function openOrderPopup() {
-
     let total = 0;
     qtyInputs.forEach(i => {
         total += (Number(i.value) || 0) * (Number(i.dataset.price) || 0);
@@ -34,67 +31,108 @@ function openOrderPopup() {
     new bootstrap.Modal(document.getElementById("customerModal")).show();
 }
 
-
-
-
 // ================= CONFIRM ORDER =================
 function confirmOrder() {
+    const name    = document.getElementById('custName').value.trim();
+    const phone   = document.getElementById('custPhone').value.trim();
+    const city    = document.getElementById('custCity').value.trim();
+    const pincode = document.getElementById('custPincode').value.trim();
+    const address = document.getElementById('custAddress').value.trim();
 
-    let name = custName.value.trim();
-    let phone = custPhone.value.trim();
-    let city = custCity.value.trim();
-    let pincode = custPincode.value.trim();
-    let address = custAddress.value.trim();
-
-    // Validation
-    if (name=="" || phone=="" || city=="" || pincode=="" || address=="") {
-        alert("Please fill all delivery details");
+    if (!name || !phone || !city || !pincode || !address) {
+        alert('Please fill in all details before confirming.');
         return;
     }
 
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-        alert("Enter valid 10 digit phone number");
-        return;
-    }
+    // Build cart summary
+    let cartItems = [];
+    let totalAmount = 0;
 
-    if (!/^\d{6}$/.test(pincode)) {
-        alert("Enter valid 6 digit pincode");
-        return;
-    }
-
-    // Message Format
-    let msg = `THANGAMANI NEW ORDER\n`;
-    msg += `--------------------------\n`;
-    msg += `Name: ${name}\n`;
-    msg += `Phone: ${phone}\n`;
-    msg += `City: ${city}\n`;
-    msg += `Pincode: ${pincode}\n`;
-    msg += `Address: ${address}\n`;
-    msg += `--------------------------\n`;
-    msg += `Product Details:\n\n`;
-
-    let total = 0;
-
-    qtyInputs.forEach(i => {
-        let qty = Number(i.value) || 0;
+    document.querySelectorAll('.qty').forEach(input => {
+        const qty = parseInt(input.value);
         if (qty > 0) {
-            let pname = i.dataset.name;
-            let price = Number(i.dataset.price);
-            let sub = qty * price;
-            total += sub;
-
-            msg += `${pname}\nQty: ${qty} x ₹${price} = ₹${sub}\n\n`;
+            const itemName  = input.getAttribute('data-name');
+            const itemPrice = parseInt(input.getAttribute('data-price'));
+            const itemTotal = qty * itemPrice;
+            totalAmount += itemTotal;
+            cartItems.push(`${itemName} x${qty} = ₹${itemTotal}`);
         }
     });
 
-    msg += `--------------------------\n`;
-    msg += `TOTAL AMOUNT: ₹${total}\n`;
-    msg += `--------------------------\n`;
-    msg += `Please confirm this order.`;
+    if (cartItems.length === 0) {
+        alert('Please add at least one product to your order.');
+        return;
+    }
 
-    // WhatsApp Number
-    let number = "919965061448";
+    // Close the Bootstrap modal
+    const modalEl = document.getElementById('customerModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
 
-    let url = "https://wa.me/" + number + "?text=" + encodeURIComponent(msg);
-    window.open(url, "_blank");
+    // Launch Razorpay
+    const options = {
+        key: 'rzp_test_SaDxLuhgtKLAB7',   // ✅ Fixed: correct key format
+        amount: totalAmount * 100,
+        currency: 'INR',
+        name: 'Thanga Mani',
+        description: 'Peanut Burfi Order',
+        image: 'images/logo.png',
+        prefill: {
+            name:    name,
+            contact: phone,
+        },
+        notes: {
+            address: address,
+            city:    city,
+            pincode: pincode,
+            items:   cartItems.join(', '),
+        },
+        theme: {
+            color: '#c8a96e',
+        },
+        handler: function (response) {
+            const paymentId = response.razorpay_payment_id;  // ✅ Fixed: correct property name
+
+            // Send email to admin via EmailJS
+            const templateParams = {
+                payment_id:       paymentId,
+                total_amount:     totalAmount,
+                customer_name:    name,
+                customer_phone:   phone,
+                customer_address: address,
+                customer_city:    city,
+                customer_pincode: pincode,
+                order_items:      cartItems.join('\n'),
+                admin_email:      'sharukeshavalingam21@gmail.com', // 📧 Replace this
+            };
+
+            emailjs.send('service_ujdih9m', 'template_8586xpk', templateParams)
+                .then(() => console.log('✅ Email sent to admin.'))
+                .catch(err => console.error('❌ Email failed:', err));
+
+            // Send WhatsApp
+            let msg = `🛒 *New Order - Thanga Mani*\n\n`;
+            msg += `✅ *Payment ID:* ${paymentId}\n`;
+            msg += `💰 *Total:* ₹${totalAmount}\n\n`;
+            msg += `👤 *Name:* ${name}\n`;
+            msg += `📞 *Phone:* ${phone}\n`;
+            msg += `📍 *Address:* ${address}, ${city} - ${pincode}\n\n`;
+            msg += `📦 *Items:*\n${cartItems.join('\n')}`;
+
+            const waNumber = '919965061448';
+            window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, '_blank');
+
+            // Reset form
+            document.querySelectorAll('.qty').forEach(i => i.value = '');
+            alert(`✅ Payment successful!\nPayment ID: ${paymentId}\nOrder notification sent!`);
+        },
+        modal: {
+            ondismiss: function () {
+                alert('Payment cancelled. Please try again.');
+            }
+        }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.open();
 }

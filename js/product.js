@@ -7,6 +7,14 @@ qtyInputs.forEach(input => {
         calculateTotal();
     });
 });
+function generateOrderNumber() {
+    const date = new Date();
+    const datePart = date.getFullYear().toString() +
+        String(date.getMonth() + 1).padStart(2, '0') +
+        String(date.getDate()).padStart(2, '0');
+    const randomPart = String(Math.floor(Math.random() * 9000) + 1000);
+    return `TM-${datePart}-${randomPart}`;
+}
 
 function calculateTotal() {
     let total = 0;
@@ -91,41 +99,36 @@ function confirmOrder() {
             color: '#c8a96e',
         },
         handler: function (response) {
-            const paymentId = response.razorpay_payment_id;  // ✅ Fixed: correct property name
+    const paymentId = response.razorpay_payment_id;
+    const orderNumber = generateOrderNumber();
 
-            // Send email to admin via EmailJS
-            const templateParams = {
-                payment_id:       paymentId,
-                total_amount:     totalAmount,
-                customer_name:    name,
-                customer_phone:   phone,
-                customer_address: address,
-                customer_city:    city,
-                customer_pincode: pincode,
-                order_items:      cartItems.join('\n'),
-                admin_email:      'sharukeshavalingam21@gmail.com', // 📧 Replace this
-            };
+    // EmailJS — send to admin
+    const templateParams = {
+        order_number:     orderNumber,
+        payment_id:       paymentId,
+        total_amount:     totalAmount,
+        customer_name:    name,
+        customer_phone:   phone,
+        customer_address: address,
+        customer_city:    city,
+        customer_pincode: pincode,
+        order_items:      cartItems.join('\n'),
+        admin_email:      'sharukeshavalingam21@gmail.com',
+    };
 
-            emailjs.send('service_ujdih9m', 'template_8586xpk', templateParams)
-                .then(() => console.log('✅ Email sent to admin.'))
-                .catch(err => console.error('❌ Email failed:', err));
+    emailjs.send('service_ujdih9m', 'template_2k1ctp2', templateParams)
+        .then(() => console.log('Email sent'))
+        .catch(err => console.error('Email failed:', err));
 
-            // Send WhatsApp
-            let msg = `🛒 *New Order - Thanga Mani*\n\n`;
-            msg += `✅ *Payment ID:* ${paymentId}\n`;
-            msg += `💰 *Total:* ₹${totalAmount}\n\n`;
-            msg += `👤 *Name:* ${name}\n`;
-            msg += `📞 *Phone:* ${phone}\n`;
-            msg += `📍 *Address:* ${address}, ${city} - ${pincode}\n\n`;
-            msg += `📦 *Items:*\n${cartItems.join('\n')}`;
+    
 
-            const waNumber = '919965061448';
-            window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, '_blank');
+    // Show success popup
+    showSuccessPopup({ orderNumber, paymentId, totalAmount, name, cartItems });
 
-            // Reset form
-            document.querySelectorAll('.qty').forEach(i => i.value = '');
-            alert(`✅ Payment successful!\nPayment ID: ${paymentId}\nOrder notification sent!`);
-        },
+    // Reset
+    document.querySelectorAll('.qty').forEach(i => i.value = '');
+    document.getElementById('totalAmount').innerText = 0;
+},
         modal: {
             ondismiss: function () {
                 alert('Payment cancelled. Please try again.');
@@ -135,4 +138,49 @@ function confirmOrder() {
 
     const rzp = new Razorpay(options);
     rzp.open();
+}
+
+function showSuccessPopup({ orderNumber, paymentId, totalAmount, name, cartItems }) {
+    const itemsHTML = cartItems.map(item => {
+        const parts = item.split(' = ');
+        return `<div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:13px;color:#666;">${parts[0]}</span>
+            <span style="font-size:13px;">${parts[1]}</span>
+        </div>`;
+    }).join('');
+
+    const popup = document.createElement('div');
+    popup.innerHTML = `
+    <div id="successOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;">
+      <div style="background:#fff;border-radius:16px;padding:2rem;max-width:400px;width:100%;text-align:center;font-family:sans-serif;">
+        <div style="width:56px;height:56px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3B6D11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <p style="font-size:18px;font-weight:600;margin:0 0 4px;">Payment Successful!</p>
+        <p style="font-size:13px;color:#888;margin:0 0 1.5rem;">Thank you, ${name}!</p>
+        <div style="background:#f7f7f5;border-radius:10px;padding:1rem;margin-bottom:1.25rem;text-align:left;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:12px;color:#888;">Order number</span>
+            <span style="font-size:13px;font-weight:600;font-family:monospace;">${orderNumber}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+            <span style="font-size:12px;color:#888;">Payment ID</span>
+            <span style="font-size:13px;font-family:monospace;">${paymentId}</span>
+          </div>
+          <hr style="border:none;border-top:1px solid #eee;margin:8px 0;">
+          ${itemsHTML}
+          <hr style="border:none;border-top:1px solid #eee;margin:8px 0;">
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-weight:600;">Total paid</span>
+            <span style="font-weight:600;">₹${totalAmount}</span>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#aaa;margin:0 0 1.25rem;">Order confirmation sent to admin via email & WhatsApp.</p>
+        <button onclick="document.getElementById('successOverlay').remove()"
+          style="width:100%;padding:12px;background:#c8a96e;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;">
+          Done
+        </button>
+      </div>
+    </div>`;
+    document.body.appendChild(popup);
 }
